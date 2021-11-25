@@ -1,0 +1,268 @@
+1)find the departing and arrival stations of passenger named 'rachid ismail'/'will'
+make view :
+CREATE VIEW [dbo].[dep_arr_id]
+	AS SELECT  [departure_station_id],[arrival_station_id] from Trip where trip_id=(
+select trip_id from Ticket where ticket_id =(select ticket_id  from Passenger WHERE [First Name] ='rachid' and [Last Name]='ismail'))
+
+
+query method 2 : 
+
+select t2.tid,t2.departing,station.Name as arrival ,t2.[Departure Time] ,t2.[Arrival Time]    from 
+(select t1.trip_id  ,t1.arrival_station_id as tid,Station.Name as [departing] ,t1.[Departure Time],t1.[Arrival Time]from
+(select trip.trip_id,Trip.[Departure Time],Trip.[Arrival Time],Trip.departure_station_id,Trip.arrival_station_id from Trip where Trip.trip_id in (
+select trip_id from Ticket where ticket_id in (select ticket_id  from Passenger WHERE[First Name] ='nour' )))t1
+inner join station 
+on(t1.departure_station_id=Station.station_id))t2
+inner join station on (t2.tid=station.station_id)
+
+
+
+
+
+2) find all trips arriving/departing to 'nice'
+find arrival time /dep time /train name to station="nice"
+
+
+ARRIVING TO NICE
+
+view: CREATE VIEW [dbo].[trips to nice]
+	AS SELECT 
+ train_id as tid ,[Departure Time] ,[Arrival Time]  from trip  where arrival_station_id=(
+select station_id from station where  name='Gare de Nice Ville')  
+
+query : select train.name as Train  ,[dbo].[trips to nice].[Departure Time],[dbo].[trips to nice].[Arrival Time],Station.name as [Arrivals] From train,[dbo].[trips to nice] ,Station
+where train_id =tid and station_id=[dbo].[trips to nice].departure_station_id
+
+
+DEPARTING FROM NICE
+
+view: CREATE VIEW [trips departing from nice]
+	AS SELECT  train_id as tid ,[Departure Time] ,[Arrival Time] ,arrival_station_id, departure_station_id from Trip  where departure_station_id=(
+select station_id from Station where  name='Gare de Nice Ville')
+
+
+query:
+ select train.name as Train  ,[trips departing from nice].[Departure Time],[trips departing from nice].[Arrival Time],Station.name as [Departing To] From train,[trips departing from nice] ,Station
+where train_id =tid and station_id=[trips departing from nice].arrival_station_id
+
+OR NO VIEW:
+
+ALL ARRIVALS/DEPARTURES:
+select  t2.trip_id,t2.[Departure Time],t2.[Arrival Time],station.Name as[departure station],t2.[arrival station]    from  
+(select t1.trip_id,t1.[Departure Time], t1.[Arrival Time],station.Name as [arrival station],t1.departure_station_id as dep  from 
+(select trip.trip_id,trip.[Departure Time],trip.[Arrival Time],trip.arrival_station_id,trip.departure_station_id from trip where trip.departure_station_id=(
+select station.station_id from station where station.Name='Gare de Nice Ville') or trip.arrival_station_id=(
+select station.station_id from station where station.Name='Gare de Nice Ville'))t1 
+inner join station on (station.station_id=t1.arrival_station_id))t2
+inner join station on (station.station_id=t2.dep)
+
+Departing :
+
+(select t1.trip_id,t1.[Departure Time], t1.[Arrival Time],station.Name as [arrival station],t1.departure_station_id as dep  from 
+(select trip.trip_id,trip.[Departure Time],trip.[Arrival Time],trip.arrival_station_id,trip.departure_station_id from trip where trip.departure_station_id=(
+select station.station_id from station where station.Name='Tripoli Station') )t1 
+inner join station on (station.station_id=t1.arrival_station_id))
+
+
+
+Arriving:
+
+
+
+(select t1.trip_id,t1.[Departure Time], t1.[Arrival Time],station.Name as [arrival station],t1.departure_station_id as dep  from 
+(select trip.trip_id,trip.[Departure Time],trip.[Arrival Time],trip.arrival_station_id,trip.departure_station_id from trip where trip.arrival_station_id=(
+select station.station_id from station where station.Name='Gare Du Nord') )t1 
+inner join station on (station.station_id=t1.departure_station_id))
+
+
+
+
+
+
+
+
+3) trains names who got late for departure/ (arrival same but change departure to arrival )
+
+view1:CREATE VIEW [late trains 2]
+	AS SELECT     station.Name as [Departing Station], [Late  Departing Trains].[ticket_id] from [Late  Departing Trains] ,Station
+where [Late  Departing Trains].departure_station_id=station_id 
+
+
+view 2:CREATE VIEW [Late  Departing Trains]
+	AS SELECT  Trip.departure_station_id,Trip.[Departure Time] ,ticket.[Departure Time] as [Actual Departure] ,ticket_id ,Station.name as [Arrrival Station] from station, Trip inner join Ticket on
+trip.trip_id=Ticket.trip_id where (trip.[Departure Time]<>Ticket.[Departure Time] and station_id=trip.arrival_station_id)
+
+query :select [Late  Departing Trains].[Actual Departure],[Late  Departing Trains].[Departure Time],[Late  Departing Trains].[Arrrival Station],[late trains 2].[Departing Station] from
+[Late  Departing Trains] inner join [late trains 2] on [late trains 2].ticket_id= [Late  Departing Trains].ticket_id
+
+check if trip nb '6' was late or not :
+
+query: select train.Name, d.[actual dep],d.[actual arrival],d.[dep time],d.[arrival time] from 
+(select c.train_id,c.[actual arrival],c.[actual dep],c.[arrival time],c.[dep time] from
+(select trip.train_id,Trip.[Departure Time] as [dep time],trip.[Arrival Time] as [arrival time],ticket.[Arrival Time] as [actual arrival],Ticket.[Departure Time] as [actual dep] from trip ,ticket 
+where (trip.trip_id='4' and ticket.trip_id='4'))c
+where (c.[actual arrival]<>c.[arrival time] or c.[dep time]<>c.[actual dep]))d
+inner join train on (train.train_id=d.train_id)
+
+
+
+4) Most Expensive train ticket details:(note add price here)
+view: SELECT  Trip.[Departure Time],Trip.[Arrival Time],Trip.departure_station_id,Trip.arrival_station_id ,Trip.trip_id from Trip where Trip.trip_id=(
+select  ticket.trip_id from ticket where ticket.ticket_id=(
+ select ticket_id from seat where price=
+(select MAX(price) as [max price ]from Seat)) )
+query :
+select t1.arrival ,t2.destination from 
+( select [most expensive ticket].trip_id as tp ,station.name as arrival from station inner join [most expensive ticket] on 
+[most expensive ticket].arrival_station_id=station_id)t1
+inner join 
+(select [most expensive ticket].trip_id as td,station.name as destination from station inner join [most expensive ticket] on 
+[most expensive ticket].departure_station_id=station_id)t2
+on (t1.tp=t2.td)
+
+
+5)details on passengers with cancled trips:
+
+view: 
+CREATE VIEW [cancled trips]
+	AS SELECT 
+ t1.tripid ,t1.ticketid,Passenger.[First Name],Passenger.[Last Name]from
+(select Ticket.ticket_id  as ticketid ,Ticket.trip_id as tripid from Ticket  where 
+ticket.[Reservation Status]='cancled')t1
+inner join Passenger
+on (t1.ticketid=Passenger.ticket_id)
+
+
+
+query:
+ select t4.tid1 as [ticket_id] ,t4.[First Name] ,t4.[Last Name],t4.departure,t5.arrival from
+(select t1.ticketid as tid1,Station.Name as [departure ],t1.[First Name],t1.[Last Name] from
+(select [cancled trips].ticketid,Trip.departure_station_id,Trip.arrival_station_id ,[cancled trips].[First Name],[cancled trips].[Last Name] from Trip inner join [cancled trips] 
+on [cancled trips].tripid=Trip.trip_id)t1
+inner join Station 
+on (station.station_id=t1.departure_station_id))t4
+inner join
+(select t1.ticketid as tid2,Station.Name as [arrival ] from
+(select [cancled trips].ticketid,Trip.departure_station_id,Trip.arrival_station_id ,[cancled trips].[First Name],[cancled trips].[Last Name] from Trip inner join [cancled trips] 
+on [cancled trips].tripid=Trip.trip_id)t1
+inner join Station 
+on (station.station_id=t1.arrival_station_id))t5
+on(t5.tid2=t4.tid1)
+
+6)passengers who got booked by user id='3':
+query:
+
+
+select t4.[First Name],t4.[Last Name],t4.arrival,Station.name as departure ,t4.[Departure Time],t4.[Arrival Time] from
+(select station.Name as arrival, t3.[First Name],t3.[Last Name],t3.ds as dest,t3.[Departure Time],t3.[Arrival Time] from
+(select trip.departure_station_id as ds,trip.[Departure Time],Trip.[Arrival Time] ,trip.arrival_station_id as  arrs,t2.[First Name],t2.[Last Name] from
+(select t1.[First Name],t1.[Last Name],t1.Gender,ticket.[Method of Booking],trip_id from 
+(select Passenger.[First Name],Passenger.[Last Name] ,passenger.Age,Passenger.Gender,Passenger.ticket_id as tid from Passenger where Passenger.ticket_id in
+(select ticket.ticket_id from Ticket where user_id='1'))t1
+inner join Ticket on (ticket.ticket_id=t1.tid))t2
+inner join Trip on (Trip.trip_id=t2.trip_id))t3
+inner join station on (station.station_id=t3.arrs))t4
+inner join station on (station.station_id=t4.dest)
+
+
+7) passenengers late to their trip
+
+view: 
+
+CREATE VIEW [passenger late]
+	AS SELECT  Passenger.[First Name],Passenger.[Last Name],passenger.Age,passenger.Address,Passenger.TAS,Ticket.[Departure Time] from Passenger inner join Ticket
+on (passenger.ticket_id=Ticket.ticket_id)
+
+
+query: (info about late passengers)
+
+select [passenger late].[First Name],[passenger late].[Last Name],[passenger late].Age,[passenger late].Address from[passenger late] where 
+[passenger late].TAS<>[passenger late].[Departure Time]
+
+query (to show numbers of passengers late according to adresses):
+ select address ,count(*) as nb
+from [count late passengers] 
+group by address
+order by nb
+
+
+
+
+ query(address with no late people):
+
+select address from Passenger where Address not in (
+select Address from [count late passengers])
+
+
+
+
+query(address with max nb of people late):
+
+ select  [address max late passsengers].address, [address max late passsengers].nb as [max nb late passengers]from
+(select max ( [address max late passsengers].nb)  as [max nb] from  [address max late passsengers])t1
+inner join  [address max late passsengers] on ( [address max late passsengers].nb=t1.[max nb])
+
+
+
+
+8) questions related to train capacity /total price/total passengers
+
+ query: (capacity of train with nb of trip='8')
+
+select train.Name as [train name] ,train.Capacity from Train where train.train_id=
+(select trip.train_id from trip where trip.trip_id='8')
+
+
+
+query: (total nb of passengers that booked trip nb='8')
+
+select count (*) as [total passengers of trip] from
+ (select ticket.ticket_id   from Ticket 
+where (Ticket.trip_id='8' and Ticket.[Reservation Status]<>'cancled'))t1
+
+
+
+query:(info about all passengers on trip nb '8':
+
+
+select t2.[First Name],t2.[Last Name],seat.Class,seat.Number as [seat number],seat.Price from
+(select  passenger.[First Name],passenger.[Last Name] ,passenger.ticket_id from
+(select ticket.ticket_id   from Ticket 
+where (Ticket.trip_id='8'   and Ticket.[Reservation Status]<>'cancled'))t1
+inner join passenger on (passenger.ticket_id=t1.ticket_id))t2 
+inner join Seat
+on (t2.ticket_id=seat.ticket_id)
+
+query :(total revenue of trip)
+
+select sum(total.price) as [total revenue of trip] from
+(select t2.[First Name],t2.[Last Name],seat.Class,seat.Number as [seat number],seat.Price from
+(select  passenger.[First Name],passenger.[Last Name] ,passenger.ticket_id from
+(select ticket.ticket_id   from Ticket 
+where (Ticket.trip_id='8' and Ticket.[Reservation Status]<>'cancled'))t1
+inner join passenger on (passenger.ticket_id=t1.ticket_id))t2 
+inner join Seat
+on (t2.ticket_id=seat.ticket_id))total
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
